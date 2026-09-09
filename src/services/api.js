@@ -47,9 +47,9 @@ const taskEndpoints = {
 // ============================================================
 export const authAPI = {
   getCaptcha: () => api.get("/auth/captcha/"),
-  loginStepOne: (credentials) => api.post("/auth/login/", credentials),
+  loginStepOne: (credentials) => api.post("/auth/agc-login/", credentials),
   verifyPin: (userId, pin) =>
-    api.post("/auth/verify-pin/", { user_id: userId, pin }),
+    api.post("/auth/agc-verify-pin/", { user_id: userId, pin }),
   forgotPassword: (data) => api.post("/auth/forgot-password/", data),
 };
 
@@ -74,6 +74,11 @@ export const adminAPI = {
   deleteUser: (id) => api.delete(`/users/${id}/`),
   updateUser: (id, data) => api.put(`/users/${id}/`, data),
   toggleUserAccess: (id) => api.post(`/users/${id}/toggle_access/`),
+  getAGCUsers: () => api.get("/agc-users/"),
+  createAGCUser: (data) => api.post("/agc-users/", data),
+  updateAGCUser: (id, data) => api.put(`/agc-users/${id}/`, data),
+  deleteAGCUser: (id) => api.delete(`/agc-users/${id}/`),
+  toggleAGCUserAccess: (id) => api.post(`/agc-users/${id}/toggle_access/`),
   getGroups: () => api.get("/groups/"),
   createGroup: (data) => api.post("/groups/", data),
   updateGroup: (id, data) => api.put(`/groups/${id}/`, data),

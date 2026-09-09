@@ -156,16 +156,6 @@ const Login = () => {
     try {
       const res = await authAPI.verifyPin(userId, pin);
 
-      // Strict Admin Check for your new centralized portal gate
-      if (!res.data.user.is_staff) {
-        setAccessRevoked(true);
-        setError(
-          "Authorization Denied: This centralized management portal is strictly restricted to administrative personnel.",
-        );
-        sessionStorage.clear();
-        return;
-      }
-
       sessionStorage.setItem("access_token", res.data.access);
       sessionStorage.setItem("user_id", res.data.user_id || userId);
       sessionStorage.setItem("user_role", "admin");

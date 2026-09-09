@@ -13,6 +13,7 @@ import AzureVMManager from "../components/AzureVMManager";
 import EmailControlManager from "../components/EmailControlManager";
 import StorageControlManager from "../components/StorageControlManager";
 import EmergencyConsole from "../components/EmergencyConsole";
+import UserManagement from "../components/UserManagement";
 
 const AGCDashboard = () => {
   const navigate = useNavigate();
@@ -65,6 +66,13 @@ const AGCDashboard = () => {
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeTab === "storage" ? "bg-slate-100 text-slate-900 shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"}`}
           >
             <HardDrive size={16} strokeWidth={1.5} /> Storage Volumes
+          </button>
+
+          <button
+            onClick={() => setActiveTab("users")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeTab === "users" ? "bg-slate-100 text-slate-900 shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"}`}
+          >
+            <Feather size={16} strokeWidth={1.5} /> User Management
           </button>
         </nav>
 
@@ -121,6 +129,8 @@ const AGCDashboard = () => {
           {activeTab === "storage" && <StorageControlManager />}
 
           {activeTab === "emergency" && <EmergencyConsole />}
+
+          {activeTab === "users" && <UserManagement />}
         </main>
       </div>
     </div>
