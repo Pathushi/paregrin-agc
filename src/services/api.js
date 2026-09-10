@@ -177,4 +177,13 @@ export const emergencyAPI = {
     }),
 };
 
+export const scalefusionAPI = {
+  getDevices: () => api.get("/mdm-devices/"),
+  executeAction: (deviceId, actionType) =>
+    api.post(`/mdm-devices/execute-action/`, {
+      device_id: deviceId,
+      action_type: actionType,
+    }),
+};
+
 export default api;

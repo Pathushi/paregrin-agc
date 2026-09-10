@@ -8,12 +8,14 @@ import {
   AlertOctagon,
   LogOut,
   Feather,
+  Smartphone,
 } from "lucide-react";
 import AzureVMManager from "../components/AzureVMManager";
 import EmailControlManager from "../components/EmailControlManager";
 import StorageControlManager from "../components/StorageControlManager";
 import EmergencyConsole from "../components/EmergencyConsole";
 import UserManagement from "../components/UserManagement";
+import ScalefusionManager from "../components/ScalefusionManager";
 
 const AGCDashboard = () => {
   const navigate = useNavigate();
@@ -74,6 +76,13 @@ const AGCDashboard = () => {
           >
             <Feather size={16} strokeWidth={1.5} /> User Management
           </button>
+
+          <button
+            onClick={() => setActiveTab("scalefusion")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeTab === "scalefusion" ? "bg-slate-100 text-slate-900 shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"}`}
+          >
+            <Smartphone size={16} strokeWidth={1.5} /> Scalefusion
+          </button>
         </nav>
 
         {/* Footer Actions */}
@@ -131,6 +140,8 @@ const AGCDashboard = () => {
           {activeTab === "emergency" && <EmergencyConsole />}
 
           {activeTab === "users" && <UserManagement />}
+
+          {activeTab === "scalefusion" && <ScalefusionManager />}
         </main>
       </div>
     </div>
