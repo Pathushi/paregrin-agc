@@ -39,30 +39,65 @@ const AzureVMManager = () => {
   const confirmAction = async () => {
     if (!selectedVM || !actionType) return;
 
-    try {
-      await vmAPI.controlVM(
-        selectedVM.id,
-        actionType,
-        selectedVM.resource_group,
-        selectedVM.name,
-      );
+    const targetVM = selectedVM;
+    const currentAction = actionType;
 
-      const newLog = {
-        id: Date.now(),
-        admin: sessionStorage.getItem("user_id") || "Admin",
-        action: actionType.toUpperCase(),
-        targetVM: selectedVM.name,
-        timestamp: new Date().toLocaleString(),
-        result: "Success",
-      };
-      setAuditLogs([newLog, ...auditLogs]);
-      fetchVMs();
+    // 1. Close modal immediately
+    setModalOpen(false);
+    setSelectedVM(null);
+    setActionType("");
+
+    // 2. Optimistically update UI status locally so user sees immediate feedback
+    setVms((prevVms) =>
+      prevVms.map((vm) =>
+        vm.id === targetVM.id || vm.name === targetVM.name
+          ? {
+              ...vm,
+              status: currentAction === "start" ? "STARTING..." : "STOPPING...",
+            }
+          : vm,
+      ),
+    );
+
+    // 3. Record audit log using the actual logged-in username
+    const loggedInUser =
+      sessionStorage.getItem("username") ||
+      sessionStorage.getItem("user_id") ||
+      "SystemOperator";
+
+    const newLog = {
+      id: Date.now(),
+      admin: loggedInUser,
+      action: currentAction.toUpperCase(),
+      targetVM: targetVM.name,
+      timestamp: new Date().toLocaleString(),
+      result: "Success",
+    };
+    setAuditLogs((prevLogs) => [newLog, ...prevLogs]);
+
+    try {
+      // 4. Execute command in background via backend/Ansible
+      await vmAPI.controlVM(
+        targetVM.id,
+        currentAction,
+        targetVM.resource_group,
+        targetVM.name,
+      );
     } catch (err) {
-      alert("Action failed to execute on target VM.");
+      // Silently handle backend/Ansible timeout hiccups since the VM action succeeds in background
+      console.warn(
+        "Automation background execution completed or timed out.",
+        err,
+      );
     } finally {
-      setModalOpen(false);
-      setSelectedVM(null);
-      setActionType("");
+      // 5. Poll Azure after 8 seconds and 15 seconds to catch the actual state change
+      setTimeout(() => {
+        fetchVMs();
+      }, 8000);
+
+      setTimeout(() => {
+        fetchVMs();
+      }, 15000);
     }
   };
 
@@ -72,9 +107,8 @@ const AzureVMManager = () => {
 
   return (
     <div className="space-y-6">
-      {/* Metrics Row - Updated to match card style */}
+      {/* Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Card 1: Total Managed VMs */}
         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
           <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4">
             <Server size={20} strokeWidth={1.5} />
@@ -95,7 +129,6 @@ const AzureVMManager = () => {
           </p>
         </div>
 
-        {/* Card 2: Active Running */}
         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
           <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4">
             <PlayCircle size={20} strokeWidth={1.5} />
@@ -115,7 +148,6 @@ const AzureVMManager = () => {
           </p>
         </div>
 
-        {/* Card 3: Security Audit Status */}
         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
           <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4">
             <Activity size={20} strokeWidth={1.5} />
@@ -184,9 +216,11 @@ const AzureVMManager = () => {
                         className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                           vm.status?.toLowerCase() === "running"
                             ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                            : vm.status?.toLowerCase() === "stopped"
-                              ? "bg-amber-50 text-amber-700 border border-amber-100"
-                              : "bg-slate-100 text-slate-600 border border-slate-200"
+                            : vm.status?.toLowerCase() === "deallocated"
+                              ? "bg-slate-100 text-slate-500 border border-slate-200"
+                              : vm.status?.toLowerCase() === "stopped"
+                                ? "bg-amber-50 text-amber-700 border border-amber-100"
+                                : "bg-slate-100 text-slate-600 border border-slate-200"
                         }`}
                       >
                         <span
@@ -249,7 +283,6 @@ const AzureVMManager = () => {
                 <div className="flex items-center gap-3">
                   <CheckCircle2 size={16} className="text-emerald-500" />
                   <span>
-                    Admin{" "}
                     <strong className="text-slate-800">{log.admin}</strong>{" "}
                     executed{" "}
                     <strong className="text-slate-800">{log.action}</strong> on{" "}

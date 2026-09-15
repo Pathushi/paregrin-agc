@@ -159,13 +159,18 @@ const Login = () => {
       sessionStorage.setItem("access_token", res.data.access);
       sessionStorage.setItem("user_id", res.data.user_id || userId);
 
+      // FIX: Save the actual username to session storage so the dashboard can read it!
+      sessionStorage.setItem(
+        "username",
+        res.data.user.username || res.data.username || formData.username,
+      );
+
       // FIX: Dynamically set role based on backend 'is_staff' flag
       sessionStorage.setItem(
         "user_role",
         res.data.user.is_staff ? "admin" : "user",
       );
 
-      // Routes directly to your new system dashboard page
       navigate("/dashboard");
     } catch (err) {
       if (err.response?.status === 403) {
@@ -178,7 +183,6 @@ const Login = () => {
       setLoading(false);
     }
   };
-
   // Trigger Identity Password/PIN Recovery API Call
   const handleRecoverySubmit = async (e) => {
     e.preventDefault();
