@@ -13,21 +13,35 @@ const api = axios.create({
 // AUTO-ATTACH TOKEN
 api.interceptors.request.use((config) => {
   const token = sessionStorage.getItem("access_token");
-  if (token) {
+
+  // Define endpoints that should NEVER send a token (public routes)
+  const isPublicEndpoint =
+    config.url.includes("/auth/captcha") ||
+    config.url.includes("/auth/agc-login") ||
+    config.url.includes("/auth/agc-verify-pin") ||
+    config.url.includes("/auth/forgot-password");
+
+  // Only attach the token if one exists AND the route is not public
+  if (token && !isPublicEndpoint) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // If the server returns 401 Unauthorized, the session has expired
-    if (error.response && error.response.status === 401) {
+    // Check if the request was made to an authentication endpoint
+    const isAuthEndpoint = error.config && error.config.url.includes("/auth/");
+
+    // Only trigger the timeout alert if it's a 401 AND it's NOT a login/PIN attempt
+    if (error.response && error.response.status === 401 && !isAuthEndpoint) {
       sessionStorage.clear();
       alert("System has timed out. Please log in again.");
       window.location.href = "/";
     }
+
     return Promise.reject(error);
   },
 );

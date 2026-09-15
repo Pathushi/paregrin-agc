@@ -158,7 +158,12 @@ const Login = () => {
 
       sessionStorage.setItem("access_token", res.data.access);
       sessionStorage.setItem("user_id", res.data.user_id || userId);
-      sessionStorage.setItem("user_role", "admin");
+
+      // FIX: Dynamically set role based on backend 'is_staff' flag
+      sessionStorage.setItem(
+        "user_role",
+        res.data.user.is_staff ? "admin" : "user",
+      );
 
       // Routes directly to your new system dashboard page
       navigate("/dashboard");

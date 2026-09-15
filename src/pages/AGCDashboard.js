@@ -21,6 +21,9 @@ const AGCDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("vms");
 
+  // Retrieve the user's role from the session storage
+  const userRole = sessionStorage.getItem("user_role");
+
   const handleLogout = () => {
     sessionStorage.clear();
     navigate("/");
@@ -70,18 +73,21 @@ const AGCDashboard = () => {
             <HardDrive size={16} strokeWidth={1.5} /> Storage Volumes
           </button>
 
-          <button
-            onClick={() => setActiveTab("users")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeTab === "users" ? "bg-slate-100 text-slate-900 shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"}`}
-          >
-            <Feather size={16} strokeWidth={1.5} /> User Management
-          </button>
+          {/* Conditional Rendering: Only show User Management if the user is an admin */}
+          {userRole === "admin" && (
+            <button
+              onClick={() => setActiveTab("users")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeTab === "users" ? "bg-slate-100 text-slate-900 shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"}`}
+            >
+              <Feather size={16} strokeWidth={1.5} /> User Management
+            </button>
+          )}
 
           <button
             onClick={() => setActiveTab("scalefusion")}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeTab === "scalefusion" ? "bg-slate-100 text-slate-900 shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"}`}
           >
-            <Smartphone size={16} strokeWidth={1.5} /> Scalefusion
+            <Smartphone size={16} strokeWidth={1.5} /> Device Control
           </button>
         </nav>
 
@@ -117,6 +123,8 @@ const AGCDashboard = () => {
               {activeTab === "vms" && "Virtual Machine Management Grid"}
               {activeTab === "email" && "Domain & Mailbox Routing Control"}
               {activeTab === "storage" && "Azure Cloud Storage Allocations"}
+              {activeTab === "users" && "User Account Management"}
+              {activeTab === "scalefusion" && "Scalefusion Device Inventory"}
               {activeTab === "emergency" && "Emergency System Override Console"}
             </h1>
           </div>
@@ -139,7 +147,8 @@ const AGCDashboard = () => {
 
           {activeTab === "emergency" && <EmergencyConsole />}
 
-          {activeTab === "users" && <UserManagement />}
+          {/* Double-check the role here to ensure the component cannot be loaded forcefully */}
+          {activeTab === "users" && userRole === "admin" && <UserManagement />}
 
           {activeTab === "scalefusion" && <ScalefusionManager />}
         </main>

@@ -14,6 +14,7 @@ const UserManagement = () => {
     designation: "",
     mobile: "",
     pin: "123456",
+    is_staff: false, // Added is_staff field
   });
   const [error, setError] = useState(null);
 
@@ -41,6 +42,7 @@ const UserManagement = () => {
       designation: "",
       mobile: "",
       pin: "123456",
+      is_staff: false, // Default to subordinate user
     });
     setError(null);
     setShowModal(true);
@@ -51,12 +53,13 @@ const UserManagement = () => {
     setCurrentUserId(user.id);
     setFormData({
       username: user.username,
-      password: "", // Leave blank unless changing
+      password: "",
       first_name: user.first_name || "",
       last_name: user.last_name || "",
       designation: user.designation || "",
       mobile: user.mobile || "",
       pin: user.pin || "123456",
+      is_staff: user.is_staff || false, // Load existing permissions
     });
     setError(null);
     setShowModal(true);
@@ -135,7 +138,7 @@ const UserManagement = () => {
             },
             React.createElement("th", { className: "p-4" }, "Username"),
             React.createElement("th", { className: "p-4" }, "Full Name"),
-            React.createElement("th", { className: "p-4" }, "Designation"),
+            React.createElement("th", { className: "p-4" }, "Role"), // Added Role Header
             React.createElement("th", { className: "p-4" }, "Status"),
             React.createElement(
               "th",
@@ -162,9 +165,16 @@ const UserManagement = () => {
                 `${user.first_name || ""} ${user.last_name || ""}`,
               ),
               React.createElement(
+                // Added Role Display
                 "td",
-                { className: "p-4 text-gray-600" },
-                user.designation || "N/A",
+                { className: "p-4" },
+                React.createElement(
+                  "span",
+                  {
+                    className: `px-2.5 py-1 rounded-full text-xs font-semibold ${user.is_staff ? "bg-purple-50 text-purple-600" : "bg-gray-100 text-gray-600"}`,
+                  },
+                  user.is_staff ? "Admin" : "Standard User",
+                ),
               ),
               React.createElement(
                 "td",
@@ -226,7 +236,7 @@ const UserManagement = () => {
           React.createElement(
             "h3",
             { className: "text-lg font-bold mb-4" },
-            isEditing ? "Modify User Account" : "Create Subordinate User",
+            isEditing ? "Modify User Account" : "Create New User",
           ),
           error &&
             React.createElement(
@@ -301,6 +311,31 @@ const UserManagement = () => {
                 setFormData({ ...formData, mobile: e.target.value }),
               className: "w-full p-2 border rounded text-sm",
             }),
+
+            // --- NEW: Admin Privileges Checkbox ---
+            React.createElement(
+              "div",
+              { className: "flex items-center space-x-2 mt-2 py-2 border-t" },
+              React.createElement("input", {
+                type: "checkbox",
+                checked: formData.is_staff,
+                onChange: (e) =>
+                  setFormData({ ...formData, is_staff: e.target.checked }),
+                className:
+                  "w-4 h-4 text-slate-800 rounded focus:ring-slate-800 cursor-pointer",
+              }),
+              React.createElement(
+                "label",
+                {
+                  className:
+                    "text-sm font-semibold text-gray-700 cursor-pointer",
+                  onClick: () =>
+                    setFormData({ ...formData, is_staff: !formData.is_staff }),
+                },
+                "Grant Admin Privileges (Allows User Management)",
+              ),
+            ),
+            // ---------------------------------------
 
             React.createElement(
               "div",
