@@ -30,33 +30,25 @@ const EmailControlManager = () => {
     }
   };
 
-  // Extract targeted email/UPN from log output strings
-  const extractTargetEmail = (log) => {
-    const text = log.full_logs || log.playbook_display || log.playbook || "";
-    // Matches standard UPN pattern (e.g., something@domain.com)
-    const emailMatch = text.match(
-      /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/,
-    );
-    return emailMatch ? emailMatch[0] : "N/A";
-  };
-
-  // Fetch real server logs, filter strictly for mail/email playbooks, and handle pagination (10 per page)
+  // Fetch real server logs, filter strictly for mail/email actions
   const fetchAuditLogs = async (page = 1) => {
     setLoadingLogs(true);
     try {
       const res = await axios.get(
-        `http://13.48.84.7/api/tasks/user-history/?page=${page}&limit=10`,
+        `http://13.48.84.7/api/agc-audit-logs/?page=${page}`,
       );
 
-      const allResults = res.data.results || [];
+      const allResults =
+        res.data.results || (Array.isArray(res.data) ? res.data : []);
       const mailFilteredResults = allResults.filter((log) => {
-        const text = (log.playbook_display || log.playbook || "").toLowerCase();
+        const text = (log.action || "").toLowerCase();
         return (
           text.includes("email") ||
           text.includes("mailbox") ||
           text.includes("block") ||
           text.includes("unblock") ||
-          text.includes("wipe")
+          text.includes("wipe") ||
+          text.includes("mail")
         );
       });
 
@@ -342,10 +334,10 @@ const EmailControlManager = () => {
                     className="hover:bg-slate-50/50 transition-colors"
                   >
                     <td className="py-3 px-4 font-mono text-slate-500">
-                      {log.date} {log.time}
+                      {new Date(log.timestamp).toLocaleString()}
                     </td>
                     <td className="py-3 px-4 font-bold text-slate-900">
-                      {log.playbook_display || log.playbook}
+                      {log.action}
                     </td>
                     <td className="py-3 px-4">
                       <span
@@ -358,9 +350,9 @@ const EmailControlManager = () => {
                         {log.status}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-slate-600">{log.user}</td>
+                    <td className="py-3 px-4 text-slate-600">{log.username}</td>
                     <td className="py-3 px-4 font-mono font-bold text-slate-800">
-                      {extractTargetEmail(log)}
+                      {log.target_resource}
                     </td>
                   </tr>
                 ))

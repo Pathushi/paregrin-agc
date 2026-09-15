@@ -28,12 +28,13 @@ const StorageControlManager = () => {
     setLoadingLogs(true);
     try {
       const res = await axios.get(
-        `http://13.48.84.7/api/tasks/user-history/?page=${page}&limit=10`,
+        `http://13.48.84.7/api/agc-audit-logs/?page=${page}`,
       );
-      const allResults = res.data.results || [];
+      const allResults =
+        res.data.results || (Array.isArray(res.data) ? res.data : []);
 
       const storageFiltered = allResults.filter((log) => {
-        const text = (log.playbook_display || log.playbook || "").toLowerCase();
+        const text = (log.action || "").toLowerCase();
         return text.includes("storage") || text.includes("blob");
       });
 
@@ -215,19 +216,25 @@ const StorageControlManager = () => {
               auditLogs.map((log) => (
                 <tr key={log.id} className="hover:bg-slate-50/50">
                   <td className="py-3 px-4 font-mono text-slate-500">
-                    {log.date} {log.time}
+                    {new Date(log.timestamp).toLocaleString()}
                   </td>
                   <td className="py-3 px-4 font-bold text-slate-900">
-                    {log.playbook_display || log.playbook}
+                    {log.action}
                   </td>
                   <td className="py-3 px-4">
-                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-bold">
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        log.status.toLowerCase() === "success"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-red-50 text-red-700"
+                      }`}
+                    >
                       {log.status}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-slate-600">{log.user}</td>
+                  <td className="py-3 px-4 text-slate-600">{log.username}</td>
                   <td className="py-3 px-4 font-mono text-[11px] text-slate-500 truncate max-w-xs">
-                    {log.full_logs?.substring(0, 40)}...
+                    {log.target_resource}
                   </td>
                 </tr>
               ))

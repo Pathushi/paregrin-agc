@@ -36,13 +36,14 @@ const AzureVMManager = () => {
     setLoadingLogs(true);
     try {
       const res = await axios.get(
-        `http://13.48.84.7/api/tasks/user-history/?page=${page}&limit=10`,
+        `http://13.48.84.7/api/agc-audit-logs/?page=${page}`,
       );
-      const allResults = res.data.results || [];
+      const allResults =
+        res.data.results || (Array.isArray(res.data) ? res.data : []);
 
       // Filter specifically for VM related actions
       const vmFiltered = allResults.filter((log) => {
-        const text = (log.playbook_display || log.playbook || "").toLowerCase();
+        const text = (log.action || "").toLowerCase();
         return (
           text.includes("vm") ||
           text.includes("azure-off") ||
@@ -333,10 +334,10 @@ const AzureVMManager = () => {
                     className="hover:bg-slate-50/50 transition-colors"
                   >
                     <td className="py-3 px-4 font-mono text-slate-500">
-                      {log.date} {log.time}
+                      {new Date(log.timestamp).toLocaleString()}
                     </td>
                     <td className="py-3 px-4 font-bold text-slate-900">
-                      {log.playbook_display || log.playbook}
+                      {log.action}
                     </td>
                     <td className="py-3 px-4">
                       <span
@@ -349,9 +350,9 @@ const AzureVMManager = () => {
                         {log.status}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-slate-600">{log.user}</td>
+                    <td className="py-3 px-4 text-slate-600">{log.username}</td>
                     <td className="py-3 px-4 font-mono text-[11px] text-slate-500 truncate max-w-xs">
-                      {log.full_logs?.substring(0, 45)}...
+                      {log.details?.substring(0, 45) || log.target_resource}
                     </td>
                   </tr>
                 ))
