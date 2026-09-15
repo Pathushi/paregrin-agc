@@ -107,7 +107,14 @@ const EmailControlManager = () => {
     if (!selectedMailbox) return;
 
     try {
-      await mailboxAPI.executeAction(selectedMailbox.id, targetAction);
+      // Use axios directly to guarantee user_id payload
+      await axios.post(
+        `http://13.48.84.7/api/mailboxes/${selectedMailbox.id}/execute-action/`,
+        {
+          action_type: targetAction,
+          user_id: sessionStorage.getItem("user_id"), // <-- ADDED
+        },
+      );
       fetchMailboxes();
       fetchAuditLogs(currentPage);
     } catch (err) {

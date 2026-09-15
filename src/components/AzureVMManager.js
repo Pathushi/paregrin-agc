@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
   Server,
   AlertTriangle,
   ShieldCheck,
-  CheckCircle2,
   Activity,
   PlayCircle,
 } from "lucide-react";
@@ -14,7 +14,12 @@ const AzureVMManager = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedVM, setSelectedVM] = useState(null);
   const [actionType, setActionType] = useState("");
+
+  // Permanent Database Audit States
   const [auditLogs, setAuditLogs] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loadingLogs, setLoadingLogs] = useState(false);
 
   // Fetch real VMs from your Django backend
   const fetchVMs = async () => {
@@ -26,8 +31,38 @@ const AzureVMManager = () => {
     }
   };
 
+  // Fetch permanent audit logs from Database
+  const fetchAuditLogs = async (page = 1) => {
+    setLoadingLogs(true);
+    try {
+      const res = await axios.get(
+        `http://13.48.84.7/api/tasks/user-history/?page=${page}&limit=10`,
+      );
+      const allResults = res.data.results || [];
+
+      // Filter specifically for VM related actions
+      const vmFiltered = allResults.filter((log) => {
+        const text = (log.playbook_display || log.playbook || "").toLowerCase();
+        return (
+          text.includes("vm") ||
+          text.includes("azure-off") ||
+          text.includes("azure-on")
+        );
+      });
+
+      setAuditLogs(vmFiltered);
+      setTotalPages(res.data.total_pages || 1);
+      setCurrentPage(res.data.current_page || page);
+    } catch (err) {
+      console.error("Failed to fetch audit history", err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
   useEffect(() => {
     fetchVMs();
+    fetchAuditLogs(1);
   }, []);
 
   const handleActionClick = (vm, action) => {
@@ -47,7 +82,7 @@ const AzureVMManager = () => {
     setSelectedVM(null);
     setActionType("");
 
-    // 2. Optimistically update UI status locally so user sees immediate feedback
+    // 2. Optimistically update UI status locally
     setVms((prevVms) =>
       prevVms.map((vm) =>
         vm.id === targetVM.id || vm.name === targetVM.name
@@ -59,38 +94,24 @@ const AzureVMManager = () => {
       ),
     );
 
-    // 3. Record audit log using the actual logged-in username
-    const loggedInUser =
-      sessionStorage.getItem("username") ||
-      sessionStorage.getItem("user_id") ||
-      "SystemOperator";
-
-    const newLog = {
-      id: Date.now(),
-      admin: loggedInUser,
-      action: currentAction.toUpperCase(),
-      targetVM: targetVM.name,
-      timestamp: new Date().toLocaleString(),
-      result: "Success",
-    };
-    setAuditLogs((prevLogs) => [newLog, ...prevLogs]);
-
     try {
-      // 4. Execute command in background via backend/Ansible
-      await vmAPI.controlVM(
-        targetVM.id,
-        currentAction,
-        targetVM.resource_group,
-        targetVM.name,
-      );
+      // 3. Execute command in background via Axios (Passing User ID for DB Logging)
+      await axios.post("http://13.48.84.7/api/azure-vms/vm-action/", {
+        action: currentAction,
+        vm_name: targetVM.name,
+        resource_group: targetVM.resource_group,
+        user_id: sessionStorage.getItem("user_id"), // Crucial for Operator logging
+      });
+
+      // Fetch the updated permanent logs immediately
+      fetchAuditLogs(currentPage);
     } catch (err) {
-      // Silently handle backend/Ansible timeout hiccups since the VM action succeeds in background
       console.warn(
         "Automation background execution completed or timed out.",
         err,
       );
     } finally {
-      // 5. Poll Azure after 8 seconds and 15 seconds to catch the actual state change
+      // 4. Poll Azure after 8 seconds and 15 seconds to catch the actual state change
       setTimeout(() => {
         fetchVMs();
       }, 8000);
@@ -243,7 +264,7 @@ const AzureVMManager = () => {
                           vm.status?.toLowerCase() === "stopped" ||
                           vm.status?.toLowerCase() === "deallocated"
                         }
-                        className="px-3 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-xl text-[10px] font-bold uppercase tracking-wider disabled:opacity-30 transition-all"
+                        className="px-3 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl text-[10px] font-bold uppercase tracking-wider disabled:opacity-30 transition-all"
                       >
                         Stop
                       </button>
@@ -263,39 +284,102 @@ const AzureVMManager = () => {
         </div>
       </div>
 
-      {/* Audit Logs Section */}
+      {/* Tabular Audit Logs Section */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-          <ShieldCheck size={16} className="text-slate-400" /> VM Action Audit
-          Trail
-        </h3>
-        {auditLogs.length === 0 ? (
-          <p className="text-xs text-slate-400 italic py-4">
-            No critical actions recorded in this session yet.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {auditLogs.map((log) => (
-              <div
-                key={log.id}
-                className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs"
-              >
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 size={16} className="text-emerald-500" />
-                  <span>
-                    <strong className="text-slate-800">{log.admin}</strong>{" "}
-                    executed{" "}
-                    <strong className="text-slate-800">{log.action}</strong> on{" "}
-                    <strong className="text-slate-800">{log.targetVM}</strong>
-                  </span>
-                </div>
-                <span className="text-[10px] text-slate-400 font-mono">
-                  {log.timestamp}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
+            <ShieldCheck size={16} className="text-slate-400" /> VM Action Audit
+            Trail
+          </h3>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            Showing latest entries (10 per page)
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                <th className="py-3 px-4">Date & Time</th>
+                <th className="py-3 px-4">Activity</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4">Operator</th>
+                <th className="py-3 px-4">Result Details</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700">
+              {loadingLogs ? (
+                <tr>
+                  <td
+                    colSpan="5"
+                    className="py-8 text-center text-slate-400 italic"
+                  >
+                    Loading VM audit entries...
+                  </td>
+                </tr>
+              ) : auditLogs.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan="5"
+                    className="py-8 text-center text-slate-400 italic"
+                  >
+                    No VM operations recorded yet.
+                  </td>
+                </tr>
+              ) : (
+                auditLogs.map((log) => (
+                  <tr
+                    key={log.id}
+                    className="hover:bg-slate-50/50 transition-colors"
+                  >
+                    <td className="py-3 px-4 font-mono text-slate-500">
+                      {log.date} {log.time}
+                    </td>
+                    <td className="py-3 px-4 font-bold text-slate-900">
+                      {log.playbook_display || log.playbook}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          log.status.toLowerCase() === "success"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                            : "bg-red-50 text-red-700 border border-red-100"
+                        }`}
+                      >
+                        {log.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-slate-600">{log.user}</td>
+                    <td className="py-3 px-4 font-mono text-[11px] text-slate-500 truncate max-w-xs">
+                      {log.full_logs?.substring(0, 45)}...
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Bar */}
+        <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-100">
+          <button
+            onClick={() => fetchAuditLogs(currentPage - 1)}
+            disabled={currentPage === 1 || loadingLogs}
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-[10px] font-bold uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          >
+            Previous
+          </button>
+          <span className="text-xs font-bold text-slate-600">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => fetchAuditLogs(currentPage + 1)}
+            disabled={currentPage === totalPages || loadingLogs}
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-[10px] font-bold uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          >
+            Next
+          </button>
+        </div>
       </div>
 
       {/* Confirmation Modal */}

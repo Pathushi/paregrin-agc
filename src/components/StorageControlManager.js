@@ -65,6 +65,7 @@ const StorageControlManager = () => {
         `http://13.48.84.7/api/storage-accounts/${selectedAccount.id}/execute-action/`,
         {
           action_type: targetAction,
+          user_id: sessionStorage.getItem("user_id"), // <-- ADDED
         },
       );
       fetchStorageAccounts();
